@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Curve Lab — คลังศัพท์ + ตัวปรับกราฟเรียลไทม์</title>
+<style>
+  :root{
+    --bg:#1c1b1f; --bg-card:#242229; --ink:#f2ede4; --ink-dim:#9d9587;
+    --amber:#e8a33d; --teal:#4fd1c5; --red:#e2705f; --line:#3a353f; --line-soft:#2d2932;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Noto Sans Thai","Sarabun",system-ui,-apple-system,sans-serif;}
+  .topbar{position:sticky;top:0;z-index:5;background:rgba(28,27,31,0.97);
+    backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:16px 20px 0;}
+  .topbar .inner{max-width:1000px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;font-weight:700;}
+  .sub{color:var(--ink-dim);font-size:12px;margin:0 0 12px;max-width:680px;line-height:1.6;}
+  .tabs{display:flex;gap:2px;}
+  .tabs button{background:transparent;border:none;color:var(--ink-dim);padding:10px 18px;
+    font-size:13.5px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;}
+  .tabs button.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:700;}
+  main{max-width:1000px;margin:0 auto;padding:20px 20px 70px;}
+
+  .cat-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+  .cat-filter button{background:var(--bg-card);border:1px solid var(--line);color:var(--ink-dim);
+    padding:6px 12px;border-radius:100px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .cat-filter button.active{background:var(--teal);color:#1c1b1f;border-color:var(--teal);font-weight:700;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+  .card{background:var(--bg-card);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .card h3{margin:0 0 1px;font-size:15px;}
+  .card .th{font-size:11.5px;color:var(--teal);margin:0 0 6px;}
+  .card .desc{font-size:11.5px;color:var(--ink-dim);line-height:1.5;margin:0 0 8px;min-height:34px;}
+  .mini-graph{width:100%;height:70px;background:var(--bg);border:1px solid var(--line-soft);border-radius:6px;margin-bottom:8px;}
+  .card .loadbtn{width:100%;background:transparent;border:1px solid var(--amber);color:var(--amber);
+    padding:6px 0;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .card .loadbtn:hover{background:var(--amber);color:#1c1b1f;}
+  .dim-tag{display:inline-block;font-size:9.5px;color:var(--ink-dim);border:1px solid var(--line);
+    border-radius:100px;padding:1px 7px;margin-bottom:6px;}
+
+  /* editor */
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .toolbar button{background:var(--bg-card);border:1px solid var(--line);color:var(--ink);
+    padding:8px 14px;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+  .toolbar button.on{background:var(--amber);color:#1c1b1f;border-color:var(--amber);font-weight:700;}
+  .toolbar select{background:var(--bg-card);border:1px solid var(--line);color:var(--ink);
+    padding:8px 10px;border-radius:8px;font-size:12.5px;font-family:inherit;}
+  #graphSvg{width:100%;height:auto;background:var(--bg-card);border:1px solid var(--line);border-radius:10px;touch-action:none;}
+  .kf-panel{background:var(--bg-card);border:1px solid var(--line);border-radius:8px;
+    padding:10px 14px;margin:10px 0;font-size:12.5px;color:var(--ink-dim);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .kf-panel select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12px;}
+  .kf-panel button{background:transparent;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .note{font-size:11px;color:var(--ink-dim);margin:6px 0 0;}
+
+  .preview-area{display:flex;justify-content:center;margin-top:14px;}
+  .stage-2d{width:100%;max-width:400px;height:120px;background:var(--bg-card);border:1px solid var(--line);
+    border-radius:10px;position:relative;overflow:hidden;}
+  .track{position:absolute;left:20px;right:20px;top:50%;height:1px;background:var(--line);}
+  .floor-line{position:absolute;left:12px;right:12px;bottom:14px;height:1px;background:var(--line);}
+  .ball-big{position:absolute;width:22px;height:22px;background:var(--amber);border-radius:50%;}
+  .stage-3d{width:100%;max-width:400px;height:140px;perspective:420px;display:flex;align-items:center;justify-content:center;
+    background:var(--bg-card);border:1px solid var(--line);border-radius:10px;}
+  .cube-wrap{width:44px;height:44px;position:relative;transform-style:preserve-3d;}
+  .face{position:absolute;width:44px;height:44px;background:rgba(232,163,61,0.82);border:1px solid #14131600;}
+  .face.f{transform:translateZ(22px);} .face.bk{transform:rotateY(180deg) translateZ(22px);}
+  .face.r{transform:rotateY(90deg) translateZ(22px);background:rgba(79,209,197,0.7);}
+  .face.l{transform:rotateY(-90deg) translateZ(22px);background:rgba(79,209,197,0.7);}
+  .face.tp{transform:rotateX(90deg) translateZ(22px);background:rgba(226,112,95,0.7);}
+  .face.bt{transform:rotateX(-90deg) translateZ(22px);background:rgba(226,112,95,0.7);}
+
+  .credit-badge{position:fixed;top:10px;right:14px;z-index:20;display:flex;align-items:center;gap:7px;
+    background:rgba(36,34,41,0.9);border:1px solid var(--line);border-radius:100px;padding:4px 12px 4px 4px;
+    text-decoration:none;backdrop-filter:blur(4px);}
+  .credit-badge img{height:25px;width:auto;display:block;}
+  .credit-badge span{font-size:11.5px;color:var(--ink);white-space:nowrap;}
+  .credit-badge:hover{border-color:var(--amber);}
+  @media(max-width:480px){.credit-badge span{display:none;}}
+</style>
+</head>
+<body>
+<a class="credit-badge" href="https://www.facebook.com/proaftereffects" target="_blank" rel="noopener">
+  <span>@proaftereffects</span>
+</a>
+
+<div class="topbar">
+  <div class="inner">
+    <h1>Motion Curve Lab</h1>
+    <p class="sub">คลังศัพท์ motion/easing มาตรฐาน (English + คำแปลไทย) กราฟคำนวณจากสมการจริง ตรงกับภาพเคลื่อนไหว 100% + ตัวปรับกราฟที่แก้ไขได้แบบเรียลไทม์</p>
+    <div class="tabs">
+      <button data-tab="library" class="active">ไลบรารี</button>
+      <button data-tab="editor">ตัวปรับกราฟ</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section id="libraryPane">
+    <div class="cat-filter" id="catFilter">
+      <button data-cat="all" class="active">ทั้งหมด</button>
+      <button data-cat="basic">พื้นฐานจังหวะ</button>
+      <button data-cat="spring">สปริง/แกว่งเลยเป้า</button>
+      <button data-cat="principles">หลักการเคลื่อนไหว</button>
+      <button data-cat="threeD">เฉพาะ 3 มิติ</button>
+      <button data-cat="popular">กราฟยอดนิยม</button>
+    </div>
+    <div class="grid" id="libGrid"></div>
+  </section>
+
+  <section id="editorPane" style="display:none;">
+    <div class="toolbar">
+      <button id="dimBtn">มิติ: 2D</button>
+      <button id="axisBtn" style="display:none;">แกน: Y</button>
+      <button id="loopBtn">โหมด: วนซ้ำ</button>
+      <select id="modeSelect">
+        <option value="slideX">วัตถุ: เลื่อนแนวนอน</option>
+        <option value="bounceY">วัตถุ: เด้งแนวตั้ง</option>
+        <option value="scale">วัตถุ: ขยาย-หด</option>
+        <option value="fade">วัตถุ: จาง-เข้ม</option>
+      </select>
+      <button id="randomBtn">🎲 สุ่มกราฟ</button>
+      <button id="resetBtn">รีเซ็ต</button>
+    </div>
+    <svg id="graphSvg" viewBox="0 0 300 180" preserveAspectRatio="none"></svg>
+    <div class="kf-panel" id="kfPanel">แตะจุดบนกราฟเพื่อเลือก / ปรับ easing • คลิกพื้นที่ว่างเพื่อเพิ่มจุดใหม่ • ลากจุดเพื่อขยับ</div>
+    <p class="note" id="specialNote"></p>
+    <div class="preview-area">
+      <div class="stage-2d" id="preview2d">
+        <div class="track" id="trackLine"></div>
+        <div class="floor-line" id="floorLine" style="display:none;"></div>
+        <div class="ball-big" id="ball2d"></div>
+      </div>
+      <div class="stage-3d" id="preview3d" style="display:none;">
+        <div class="cube-wrap" id="cube3d">
+          <div class="face f"></div><div class="face bk"></div><div class="face r"></div>
+          <div class="face l"></div><div class="face tp"></div><div class="face bt"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===================== easing math (shared by graph + animation) ===================== */
+function cubicBezier(x1,y1,x2,y2){
+  const bx = t => { const u=1-t; return 3*u*u*t*x1 + 3*u*t*t*x2 + t*t*t; };
+  const by = t => { const u=1-t; return 3*u*u*t*y1 + 3*u*t*t*y2 + t*t*t; };
+  return u => {
+    let lo=0, hi=1, t=u;
+    for(let i=0;i<20;i++){
+      const x = bx(t);
+      if(Math.abs(x-u) < 1e-5) break;
+      if(x < u) lo = t; else hi = t;
+      t = (lo+hi)/2;
+    }
+    return by(t);
+  };
+}
+
+const EASING_FN = {
+  linear: u => u,
+  easeIn: u => u*u*u,
+  easeOut: u => 1 - Math.pow(1-u, 3),
+  easeInOut: u => u < 0.5 ? 4*u*u*u : 1 - Math.pow(-2*u+2, 3)/2,
+  hold: u => u >= 1 ? 1 : 0,
+  backIn: u => { const c1=1.70158, c3=c1+1; return c3*u*u*u - c1*u*u; },
+  backOut: u => { const c1=1.70158, c3=c1+1; return 1 + c3*Math.pow(u-1,3) + c1*Math.pow(u-1,2); },
+  elasticOut: u => { if(u===0||u===1) return u; const c4=(2*Math.PI)/3; return Math.pow(2,-10*u)*Math.sin((u*10-0.75)*c4)+1; },
+  bounceOut: u => {
+    const n1=7.5625, d1=2.75;
+    if(u<1/d1) return n1*u*u;
+    if(u<2/d1){u-=1.5/d1; return n1*u*u+0.75;}
+    if(u<2.5/d1){u-=2.25/d1; return n1*u*u+0.9375;}
+    u-=2.625/d1; return n1*u*u+0.984375;
+  },
+  // ===== popular named curves used in real tools (authentic cubic-bezier control points) =====
+  materialStd: cubicBezier(0.4, 0.0, 0.2, 1),
+  materialDecel: cubicBezier(0.0, 0.0, 0.2, 1),
+  materialAccel: cubicBezier(0.4, 0.0, 1, 1),
+  cssEase: cubicBezier(0.25, 0.1, 0.25, 1),
+  expoOut: cubicBezier(0.16, 1, 0.3, 1),
+  sineInOut: cubicBezier(0.37, 0, 0.63, 1)
+};
+const EASE_LABELS = {
+  linear:"Linear (เชิงเส้น)", easeIn:"Ease In (ผ่อนเข้า)", easeOut:"Ease Out (ผ่อนออก)",
+  easeInOut:"Ease In-Out (ผ่อนเข้า-ออก)", hold:"Hold (ค้างแล้วสแนป)", backIn:"Back In (ถอยก่อนเข้า)",
+  backOut:"Back Out (พุ่งเลยแล้วคืน)", elasticOut:"Elastic (สปริงยืดหยุ่น)", bounceOut:"Bounce (เด้งกระแทก)",
+  materialStd:"Material Standard (0.4,0,.2,1)", materialDecel:"Material Decelerate (0,0,.2,1)",
+  materialAccel:"Material Accelerate (.4,0,1,1)", cssEase:"CSS \"ease\" (.25,.1,.25,1)",
+  expoOut:"Expo Out (.16,1,.3,1)", sineInOut:"Sine In-Out (.37,0,.63,1)"
+};
+
+
+function evaluate(kf, t){
+  if(t <= kf[0].t) return kf[0].v;
+  for(let i=0;i<kf.length-1;i++){
+    const a=kf[i], b=kf[i+1];
+    if(t>=a.t && t<=b.t){
+      const span = b.t - a.t;
+      const u = span<=0 ? 1 : (t-a.t)/span;
+      const fn = EASING_FN[a.e] || EASING_FN.linear;
+      return a.v + (b.v-a.v)*fn(u);
+    }
+  }
+  return kf[kf.length-1].v;
+}
+
+const GW=300, GBASE=140, GSCALE=100; // graph coordinate mapping: y = GBASE - v*GSCALE
+function toXY(t,v){ return {x:t*GW, y:GBASE - v*GSCALE}; }
+function toTV(x,y){ return {t:x/GW, v:(GBASE-y)/GSCALE}; }
+
+function pathFor(kf){
+  const N=120; let d='';
+  for(let i=0;i<=N;i++){
+    const t=i/N; const v=evaluate(kf,t); const p=toXY(t,v);
+    d += (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ';
+  }
+  return d;
+}
+
+/* ===================== library presets ===================== */
+const PRESETS = [
+  {name:"Linear", th:"เชิงเส้น", desc:"ความเร็วคงที่ตลอดเส้นทาง ไม่มีการเร่งหรือชะลอ", cat:"basic", dim:"2d",
+    kf:[{t:0,v:0,e:'linear'},{t:1,v:1,e:'linear'}]},
+  {name:"Ease In", th:"ผ่อนเข้า", desc:"เริ่มช้า แล้วเร่งความเร็วขึ้นเรื่อยๆ", cat:"basic", dim:"2d",
+    kf:[{t:0,v:0,e:'easeIn'},{t:1,v:1,e:'linear'}]},
+  {name:"Ease Out", th:"ผ่อนออก", desc:"เริ่มเร็ว แล้วค่อยๆ ชะลอลงตอนท้าย", cat:"basic", dim:"2d",
+    kf:[{t:0,v:0,e:'easeOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Ease In-Out", th:"ผ่อนเข้า-ออก", desc:"ช้า-เร็ว-ช้า เส้นโค้งตัว S ที่ใช้บ่อยที่สุด", cat:"basic", dim:"2d",
+    kf:[{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Hold (Step)", th:"ค้างเฟรม", desc:"ไม่มีการไล่ระดับ ค้างนิ่งแล้วกระโดดทันที เหมือน stop-motion", cat:"basic", dim:"2d",
+    kf:[{t:0,v:0,e:'hold'},{t:1,v:1,e:'linear'}]},
+
+  {name:"Back Ease In", th:"ถอยก่อนพุ่งเข้า", desc:"เหวี่ยงถอยหลังเล็กน้อยก่อนพุ่งเข้าเป้าหมาย", cat:"spring", dim:"2d",
+    kf:[{t:0,v:0,e:'backIn'},{t:1,v:1,e:'linear'}]},
+  {name:"Back Ease Out", th:"พุ่งเลยแล้วคืน", desc:"พุ่งเลยตำแหน่งเป้าหมายเล็กน้อยก่อนดีดกลับมานิ่ง", cat:"spring", dim:"2d",
+    kf:[{t:0,v:0,e:'backOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Elastic", th:"ยืดหยุ่นสปริง", desc:"แกว่งสั่นเหมือนสปริงหลายรอบก่อนจะนิ่ง", cat:"spring", dim:"2d",
+    kf:[{t:0,v:0,e:'elasticOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Bounce", th:"เด้งกระแทกพื้น", desc:"กระแทกพื้นซ้ำ แรงเด้งลดหลั่นลงเรื่อยๆ", cat:"spring", dim:"2d",
+    kf:[{t:0,v:0,e:'bounceOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Overshoot (manual keyframe)", th:"พุ่งเลยเป้า (คีย์เฟรมมือ)", desc:"ตัวอย่างสร้าง overshoot เองด้วย keyframe แทนสูตรสำเร็จรูป", cat:"spring", dim:"2d",
+    kf:[{t:0,v:0,e:'easeOut'},{t:0.7,v:1.15,e:'easeInOut'},{t:1,v:1,e:'linear'}]},
+
+  {name:"Anticipation", th:"ท่าเตรียม", desc:"เหวี่ยงย้อนทิศทางเล็กน้อยก่อนออกแรงเคลื่อนที่จริง", cat:"principles", dim:"2d",
+    kf:[{t:0,v:0,e:'easeInOut'},{t:0.25,v:-0.15,e:'easeOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Follow Through", th:"แรงตาม", desc:"ส่วนที่ตามแรงมาช้ากว่าหลัก แกว่งเลยก่อนนิ่ง", cat:"principles", dim:"2d",
+    kf:[{t:0,v:0,e:'easeIn'},{t:0.6,v:1,e:'easeOut'},{t:0.8,v:0.92,e:'easeInOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Overlapping Action", th:"จังหวะซ้อน", desc:"ส่วนตามเริ่มขยับช้ากว่าส่วนนำเล็กน้อย ไม่พร้อมกัน", cat:"principles", dim:"2d",
+    kf:[{t:0,v:0,e:'hold'},{t:0.15,v:0,e:'easeOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Continue", th:"ต่อเนื่องไม่หยุด", desc:"เคลื่อนที่ไปเรื่อยๆ วนซ้ำทิศทางเดียวไม่มีจุดจบ", cat:"principles", dim:"2d",
+    kf:[{t:0,v:0,e:'linear'},{t:1,v:1,e:'linear'}], playMode:'loop'},
+  {name:"Ping-pong / Yoyo", th:"ไป-กลับสลับทิศ", desc:"เคลื่อนไปสุดทางแล้ววนกลับ สลับทิศไปเรื่อยๆ", cat:"principles", dim:"2d",
+    kf:[{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}], playMode:'pingpong'},
+
+  {name:"Rotate Y", th:"หมุนรอบแกนตั้ง", desc:"หมุนวัตถุรอบแกน Y (แนวตั้ง) ต่อเนื่อง", cat:"threeD", dim:"3d", axis:'Y',
+    kf:[{t:0,v:0,e:'linear'},{t:1,v:1,e:'linear'}], playMode:'loop'},
+  {name:"Rotate X", th:"หมุนรอบแกนนอน", desc:"หมุนวัตถุรอบแกน X (แนวนอน) ต่อเนื่อง", cat:"threeD", dim:"3d", axis:'X',
+    kf:[{t:0,v:0,e:'linear'},{t:1,v:1,e:'linear'}], playMode:'loop'},
+  {name:"Orbit", th:"โคจรรอบจุด", desc:"เคลื่อนที่วนรอบจุดศูนย์กลางใน 3 มิติ — ตัวปรับกราฟสาธิตแทนด้วยหมุนแกน Y", cat:"threeD", dim:"3d", axis:'Y', special:'orbit',
+    kf:[{t:0,v:0,e:'linear'},{t:1,v:1,e:'linear'}], playMode:'loop'},
+  {name:"Depth (Z-move)", th:"เคลื่อนที่ตามความลึก", desc:"เข้า-ออกจากกล้องตามแกน Z — ตัวปรับกราฟสาธิตแทนด้วยหมุนแกน Y", cat:"threeD", dim:"3d", axis:'Y', special:'depth',
+    kf:[{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}], playMode:'pingpong'},
+  {name:"Perspective Scale", th:"ขนาดตามระยะ", desc:"ผลลัพธ์ทางสายตาจากการเคลื่อนที่ตามความลึก ยิ่งใกล้กล้องยิ่งใหญ่", cat:"threeD", dim:"3d", axis:'Y', special:'depth',
+    kf:[{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}], playMode:'pingpong'},
+
+  {name:"Material Standard", th:"เฟด/เลื่อนมาตรฐานของ Material Design", desc:"Fast Out, Slow In — ใช้เกือบทุกที่ใน Android/Material Design", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'materialStd'},{t:1,v:1,e:'linear'}]},
+  {name:"Material Decelerate", th:"ชะลอเข้าเฟรม", desc:"Linear Out, Slow In — ใช้ตอนวัตถุเข้าสู่จอ", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'materialDecel'},{t:1,v:1,e:'linear'}]},
+  {name:"Material Accelerate", th:"เร่งออกจากเฟรม", desc:"Fast Out, Linear In — ใช้ตอนวัตถุออกจากจอ", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'materialAccel'},{t:1,v:1,e:'linear'}]},
+  {name:"CSS \"ease\"", th:"ค่าเริ่มต้นของเบราว์เซอร์", desc:"cubic-bezier(.25,.1,.25,1) — easing ที่ถูกใช้งานเยอะที่สุดในโลกเว็บ (ค่า default ของ CSS transition)", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'cssEase'},{t:1,v:1,e:'linear'}]},
+  {name:"Expo Out", th:"ผ่อนออกแบบเอ็กซ์โพเนนเชียล", desc:"เริ่มเร็วมากแล้วชะลอยาวนาน ให้ความรู้สึกลื่นหรู นิยมมากใน GSAP และเว็บยุคใหม่", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'expoOut'},{t:1,v:1,e:'linear'}]},
+  {name:"Sine In-Out", th:"โค้งนุ่มที่สุด", desc:"นุ่มนวลกว่า cubic ease-in-out ทั่วไป นิยมใช้กับ UI transition ที่ต้องการความเรียบหรู", cat:"popular", dim:"2d",
+    kf:[{t:0,v:0,e:'sineInOut'},{t:1,v:1,e:'linear'}]}
+];
+const CAT_LABEL = {basic:"พื้นฐานจังหวะ", spring:"สปริง/แกว่งเลยเป้า", principles:"หลักการเคลื่อนไหว", threeD:"3 มิติ", popular:"กราฟยอดนิยม"};
+
+/* ===================== library rendering ===================== */
+function miniGraphSVG(kf){
+  return `<svg class="mini-graph" viewBox="0 0 300 180" preserveAspectRatio="none">
+    <line x1="0" y1="140" x2="300" y2="140" stroke="#3a353f" stroke-width="1"/>
+    <line x1="0" y1="40" x2="300" y2="40" stroke="#3a353f" stroke-width="1" stroke-dasharray="3,4"/>
+    <path d="${pathFor(kf)}" fill="none" stroke="#e8a33d" stroke-width="2.5"/>
+  </svg>`;
+}
+function renderLibrary(catFilter){
+  const grid = document.getElementById('libGrid');
+  const list = PRESETS.filter(p => catFilter==='all' || p.cat===catFilter);
+  grid.innerHTML = list.map((p, idx) => `
+    <div class="card">
+      <span class="dim-tag">${p.dim==='3d' ? '3D' : '2D'} · ${CAT_LABEL[p.cat]}</span>
+      <h3>${p.name}</h3>
+      <p class="th">${p.th}</p>
+      <p class="desc">${p.desc}</p>
+      ${miniGraphSVG(p.kf)}
+      <button class="loadbtn" data-idx="${PRESETS.indexOf(p)}">โหลดเข้าตัวปรับกราฟ ▶</button>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.loadbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      loadPreset(PRESETS[parseInt(btn.dataset.idx)]);
+      switchTab('editor');
+    });
+  });
+}
+
+document.getElementById('catFilter').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#catFilter button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLibrary(btn.dataset.cat);
+});
+renderLibrary('all');
+
+/* ===================== tabs ===================== */
+function switchTab(tab){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('libraryPane').style.display = tab==='library' ? '' : 'none';
+  document.getElementById('editorPane').style.display = tab==='editor' ? '' : 'none';
+}
+document.querySelector('.tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  switchTab(btn.dataset.tab);
+});
+
+/* ===================== editor state ===================== */
+let curKF = [{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}];
+let curDim = '2d';
+let curAxis = 'Y';
+let curPlayMode = 'loop';
+let curObjMode = 'slideX';
+let selectedIndex = null;
+let dragIndex = null;
+
+function loadPreset(p){
+  curKF = p.kf.map(k => ({...k}));
+  curDim = p.dim;
+  curAxis = p.axis || 'Y';
+  curPlayMode = p.playMode || 'loop';
+  selectedIndex = null;
+  document.getElementById('specialNote').textContent = p.special
+    ? 'หมายเหตุ: พรีเซ็ตนี้เป็นเอฟเฟกต์พิเศษ (โคจร/ความลึก) ตัวปรับกราฟทั่วไปสาธิตแทนด้วยการหมุนแกนเดียว'
+    : '';
+  updateToolbarLabels();
+  renderGraph();
+  renderKfPanel();
+}
+
+function updateToolbarLabels(){
+  document.getElementById('dimBtn').textContent = 'มิติ: ' + (curDim==='3d' ? '3D' : '2D');
+  document.getElementById('axisBtn').style.display = curDim==='3d' ? '' : 'none';
+  document.getElementById('axisBtn').textContent = 'แกน: ' + curAxis;
+  document.getElementById('loopBtn').textContent = 'โหมด: ' + (curPlayMode==='pingpong' ? 'ไป-กลับ' : 'วนซ้ำ');
+  document.getElementById('preview2d').style.display = curDim==='3d' ? 'none' : '';
+  document.getElementById('preview3d').style.display = curDim==='3d' ? '' : 'none';
+}
+
+document.getElementById('dimBtn').addEventListener('click', ()=>{
+  curDim = curDim==='3d' ? '2d' : '3d';
+  updateToolbarLabels();
+});
+document.getElementById('axisBtn').addEventListener('click', ()=>{
+  curAxis = curAxis==='Y' ? 'X' : curAxis==='X' ? 'Z' : 'Y';
+  updateToolbarLabels();
+});
+document.getElementById('loopBtn').addEventListener('click', ()=>{
+  curPlayMode = curPlayMode==='pingpong' ? 'loop' : 'pingpong';
+  updateToolbarLabels();
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  curKF = [{t:0,v:0,e:'easeInOut'},{t:1,v:1,e:'linear'}];
+  selectedIndex = null;
+  document.getElementById('specialNote').textContent = '';
+  renderGraph(); renderKfPanel();
+});
+document.getElementById('randomBtn').addEventListener('click', ()=>{
+  const easings = Object.keys(EASING_FN);
+  const n = 2 + Math.floor(Math.random()*3); // 2..4 interior points
+  const ts = [0];
+  for(let i=0;i<n;i++) ts.push(+(Math.random()).toFixed(2));
+  ts.push(1);
+  const uniqueSorted = [...new Set(ts)].sort((a,b)=>a-b);
+  curKF = uniqueSorted.map((t,i)=>({
+    t, v: i===0 ? 0 : i===uniqueSorted.length-1 ? 1 : +(Math.random()*1.2-0.1).toFixed(2),
+    e: easings[Math.floor(Math.random()*easings.length)]
+  }));
+  selectedIndex = null;
+  document.getElementById('specialNote').textContent = '';
+  renderGraph(); renderKfPanel();
+});
+
+/* ===================== graph rendering + interaction ===================== */
+const svg = document.getElementById('graphSvg');
+
+function renderGraph(){
+  let markers = '';
+  curKF.forEach((k, i)=>{
+    const p = toXY(k.t, k.v);
+    const sel = i===selectedIndex;
+    markers += `<circle data-kf="${i}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${sel?7:5.5}"
+      fill="${sel?'#4fd1c5':'#e8a33d'}" stroke="#1c1b1f" stroke-width="1.5" style="cursor:pointer;"/>`;
+  });
+  svg.innerHTML = `
+    <line x1="0" y1="140" x2="300" y2="140" stroke="#3a353f" stroke-width="1"/>
+    <line x1="0" y1="40" x2="300" y2="40" stroke="#3a353f" stroke-width="1" stroke-dasharray="3,4"/>
+    <line x1="0" y1="40" x2="0" y2="140" stroke="#3a353f" stroke-width="1"/>
+    <line x1="300" y1="40" x2="300" y2="140" stroke="#3a353f" stroke-width="1"/>
+    <path d="${pathFor(curKF)}" fill="none" stroke="#e8a33d" stroke-width="2.5"/>
+    <g id="markersGroup">${markers}</g>
+    <g id="playheadGroup"><line id="playLine" x1="0" y1="0" x2="0" y2="180" stroke="#4fd1c5" stroke-width="1" stroke-dasharray="2,3"/>
+      <circle id="playDot" cx="0" cy="0" r="4" fill="#4fd1c5"/></g>
+  `;
+}
+
+function svgPoint(evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function renderKfPanel(){
+  const panel = document.getElementById('kfPanel');
+  if(selectedIndex===null){
+    panel.innerHTML = 'แตะจุดบนกราฟเพื่อเลือก / ปรับ easing • คลิกพื้นที่ว่างเพื่อเพิ่มจุดใหม่ • ลากจุดเพื่อขยับ';
+    return;
+  }
+  const k = curKF[selectedIndex];
+  const isLast = selectedIndex === curKF.length-1;
+  const isEdge = selectedIndex===0 || isLast;
+  let html = `<span>จุดที่ ${selectedIndex+1} — t=${k.t.toFixed(2)}, v=${k.v.toFixed(2)}</span>`;
+  if(!isLast){
+    html += `<select id="easeSelect">${Object.keys(EASING_FN).map(key =>
+      `<option value="${key}" ${key===k.e?'selected':''}>${EASE_LABELS[key]}</option>`).join('')}</select>`;
+  }
+  if(!isEdge){
+    html += `<button id="delKfBtn">ลบจุดนี้</button>`;
+  }
+  panel.innerHTML = html;
+  const sel = document.getElementById('easeSelect');
+  if(sel) sel.addEventListener('change', ()=>{ curKF[selectedIndex].e = sel.value; renderGraph(); });
+  const del = document.getElementById('delKfBtn');
+  if(del) del.addEventListener('click', ()=>{
+    curKF.splice(selectedIndex,1); selectedIndex=null; renderGraph(); renderKfPanel();
+  });
+}
+
+svg.addEventListener('pointerdown', e=>{
+  const hit = e.target.closest('[data-kf]');
+  if(hit){
+    dragIndex = parseInt(hit.dataset.kf);
+    selectedIndex = dragIndex;
+    svg.setPointerCapture(e.pointerId);
+    renderKfPanel();
+    renderGraph();
+    return;
+  }
+  // empty area click -> add new keyframe
+  const pt = svgPoint(e);
+  const {t, v} = toTV(pt.x, pt.y);
+  const tc = Math.min(0.98, Math.max(0.02, t));
+  let insertAt = curKF.findIndex(k => k.t > tc);
+  if(insertAt === -1) insertAt = curKF.length - 1;
+  curKF.splice(insertAt, 0, {t:tc, v:+v.toFixed(2), e:'easeInOut'});
+  selectedIndex = insertAt;
+  renderGraph(); renderKfPanel();
+});
+
+svg.addEventListener('pointermove', e=>{
+  if(dragIndex===null) return;
+  const pt = svgPoint(e);
+  let {t, v} = toTV(pt.x, pt.y);
+  v = Math.min(1.4, Math.max(-0.4, v));
+  const k = curKF[dragIndex];
+  if(dragIndex===0){ k.t = 0; }
+  else if(dragIndex===curKF.length-1){ k.t = 1; }
+  else{
+    const prevT = curKF[dragIndex-1].t + 0.02;
+    const nextT = curKF[dragIndex+1].t - 0.02;
+    k.t = Math.min(nextT, Math.max(prevT, t));
+  }
+  k.v = v;
+  renderGraph();
+});
+svg.addEventListener('pointerup', ()=>{ dragIndex=null; });
+svg.addEventListener('pointerleave', ()=>{ dragIndex=null; });
+
+/* ===================== live preview (RAF loop) ===================== */
+const ball2d = document.getElementById('ball2d');
+const cube3d = document.getElementById('cube3d');
+const stage2d = document.getElementById('preview2d');
+const trackLine = document.getElementById('trackLine');
+const floorLine = document.getElementById('floorLine');
+const CYCLE = 1.7; // seconds per pass
+const PAD = 16;        // inner margin kept clear inside the stage frame
+const BALL = 22;       // ball diameter in px
+// value domain the preview maps to the frame: matches the v-range keyframes can be dragged to
+// (see pointermove clamp below), so any curve — including back/elastic overshoot — stays on-frame.
+const VMIN = -0.4, VMAX = 1.4;
+let dims = {w:360, h:120};
+let startTime = performance.now();
+
+function measureStage(){
+  const r = stage2d.getBoundingClientRect();
+  dims = {w: r.width || 360, h: r.height || 120};
+}
+window.addEventListener('resize', measureStage);
+
+function setupBallMode(mode){
+  measureStage();
+  ball2d.style.left = ''; ball2d.style.right = ''; ball2d.style.top = ''; ball2d.style.bottom = '';
+  ball2d.style.marginLeft = ''; ball2d.style.marginTop = '';
+  trackLine.style.display = mode === 'slideX' ? '' : 'none';
+  floorLine.style.display = mode === 'bounceY' ? '' : 'none';
+  if(mode === 'slideX'){
+    ball2d.style.left = PAD + 'px';
+    ball2d.style.top = '50%';
+    ball2d.style.marginTop = (-BALL/2) + 'px';
+  } else if(mode === 'bounceY'){
+    ball2d.style.left = '50%';
+    ball2d.style.marginLeft = (-BALL/2) + 'px';
+    ball2d.style.bottom = '14px';
+  } else { // scale, fade — stay centered
+    ball2d.style.left = '50%';
+    ball2d.style.top = '50%';
+    ball2d.style.marginLeft = (-BALL/2) + 'px';
+    ball2d.style.marginTop = (-BALL/2) + 'px';
+  }
+}
+document.getElementById('modeSelect').addEventListener('change', e => {
+  curObjMode = e.target.value;
+  setupBallMode(curObjMode);
+});
+setupBallMode(curObjMode);
+
+function tick(now){
+  const elapsed = (now - startTime) / 1000;
+  const raw = (elapsed % CYCLE) / CYCLE;
+  const tNorm = curPlayMode === 'pingpong' ? (raw < 0.5 ? raw*2 : 2 - raw*2) : raw;
+  const val = evaluate(curKF, tNorm);
+  // clamp defensively so no easing formula (elastic/back overshoot) can push the object past the frame
+  const vClamped = Math.min(VMAX, Math.max(VMIN, val));
+  const norm = (vClamped - VMIN) / (VMAX - VMIN); // 0..1 across the full safe domain
+
+  if(curDim === '3d'){
+    const deg = val * 360;
+    cube3d.style.transform = curAxis==='X' ? `rotateX(${deg}deg)` : curAxis==='Z' ? `rotateZ(${deg}deg)` : `rotateY(${deg}deg)`;
+  } else if(curObjMode === 'slideX'){
+    const travel = Math.max(0, dims.w - PAD*2 - BALL);
+    ball2d.style.transform = `translateX(${norm * travel}px)`;
+    ball2d.style.opacity = 1;
+  } else if(curObjMode === 'bounceY'){
+    const travel = Math.max(0, dims.h - 14 - PAD - BALL);
+    ball2d.style.transform = `translateY(${-(norm * travel)}px)`;
+    ball2d.style.opacity = 1;
+  } else if(curObjMode === 'scale'){
+    ball2d.style.transform = `scale(${0.35 + norm*1.05})`;
+    ball2d.style.opacity = 1;
+  } else if(curObjMode === 'fade'){
+    ball2d.style.transform = 'scale(1)';
+    ball2d.style.opacity = 0.12 + norm*0.88;
+  }
+
+  const p = toXY(tNorm, val);
+  const line = document.getElementById('playLine');
+  const dot = document.getElementById('playDot');
+  if(line && dot){
+    line.setAttribute('x1', p.x); line.setAttribute('x2', p.x);
+    dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* init */
+updateToolbarLabels();
+renderGraph();
+renderKfPanel();
+</script>
+</body>
+</html>
